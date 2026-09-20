@@ -1,0 +1,94 @@
+# Publica la imagen Docker de Chatwoot (edición CE) de Ulá Labs a GHCR.
+#
+# Se dispara con un tag `ula-v*` o a mano desde la pestaña Actions.
+#   git tag ula-v4.17.0-ula.1 && git push origin ula-v4.17.0-ula.1
+#     -> ghcr.io/ulalabscr/chatwoot:v4.17.0-ula.1
+#
+# Diferencias contra el publish_foss_docker.yml oficial de Chatwoot:
+#   - solo linux/amd64 (el droplet es amd64): sin QEMU, sin matrix, sin job de
+#     merge de manifiestos. Corta el build a la mitad.
+#   - push a GHCR con el GITHUB_TOKEN en vez de Docker Hub con secrets.
+#   - cache de capas en el propio registry, para que el rebuild del parche de
+#     pricing reuse el `bundle install` en vez de recompilar grpc desde cero.
+
+name: Publicar imagen Chatwoot Ulá Labs
+
+on:
+  push:
+    tags:
+      - 'ula-v*'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Tag de imagen (ej: v4.17.0-ula.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ghcr.io exige minúsculas en el namespace.
+      - name: Resolver nombre de imagen y tag
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE=ghcr.io/${OWNER_LC}/chatwoot" >> $GITHUB_ENV
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.image_tag }}"
+          else
+            # refs/tags/ula-v4.17.0-ula.1 -> v4.17.0-ula.1
+            TAG="${GITHUB_REF_NAME#ula-}"
+          fi
+          echo "TAG=${TAG}" >> $GITHUB_ENV
+          echo "Construyendo ghcr.io/${OWNER_LC}/chatwoot:${TAG}"
+
+      # Edición CE: la carpeta enterprise/ está bajo licencia comercial y no
+      # puede ir en un paquete público. No usamos ninguna función enterprise
+      # (Captain, SAML, audit logs, campañas).
+      - name: Quitar código enterprise
+        run: |
+          rm -rf enterprise
+          rm -rf spec/enterprise
+
+      - name: Marcar edición CE
+        run: |
+          echo -en '\nENV CW_EDITION="ce"' >> docker/Dockerfile
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login a GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build y push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ env.TAG }}
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max
+          provenance: false
+
+      - name: Verificar imagen publicada
+        run: |
+          docker buildx imagetools inspect ${{ env.IMAGE }}:${{ env.TAG }}
+          echo ""
+          echo "Listo. En CapRover, cambiar la línea FROM de chat-web y chat-worker a:"
+          echo "  FROM ${{ env.IMAGE }}:${{ env.TAG }}"
