@@ -30,6 +30,7 @@ class Instagram::CallbacksController < ApplicationController
     @long_lived_token_response = exchange_for_long_lived_token(@response.token)
     inbox, already_exists = find_or_create_inbox
 
+    return redirect_to_panel(ok: 1, inbox_id: inbox.id) if panel_return?
     return redirect_to app_onboarding_inbox_setup_url(account_id: account_id) if return_to == 'onboarding'
 
     if already_exists
@@ -91,6 +92,8 @@ class Instagram::CallbacksController < ApplicationController
   # This ensures consistent error handling across different error scenarios
   # Frontend will handle the error page based on the error_type
   def redirect_to_error_page(error_info)
+    return redirect_to_panel(error: error_info['error_message'].to_s.truncate(300)) if panel_return?
+
     redirect_to app_new_instagram_inbox_url(
       account_id: account_id,
       error_type: error_info['error_type'],
@@ -163,6 +166,19 @@ class Instagram::CallbacksController < ApplicationController
 
   def return_to
     instagram_token_return_to(params[:state])
+  end
+
+  # Ulá Labs: el panel de clientes (panel-clientes) inicia el OAuth con
+  # return_to='panel'. El valor viaja firmado dentro del JWT del state, así
+  # que no se puede manipular desde la URL, y el destino sale de PANEL_URL —
+  # nunca de un parámetro — para no abrir un open redirect.
+  def panel_return?
+    return_to == 'panel' && ENV['PANEL_URL'].present?
+  end
+
+  def redirect_to_panel(query)
+    url = "#{ENV.fetch('PANEL_URL').chomp('/')}/integraciones/instagram/retorno?#{query.to_query}"
+    redirect_to url, allow_other_host: true
   end
 
   def oauth_code

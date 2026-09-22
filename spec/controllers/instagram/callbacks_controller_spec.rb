@@ -69,6 +69,44 @@ RSpec.describe Instagram::CallbacksController do
       end
     end
 
+    context 'when the flow was started from the Ulá Labs client panel' do
+      before do
+        allow(controller).to receive(:instagram_token_return_to).and_return('panel')
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('PANEL_URL').and_return('https://panel.example.com/')
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PANEL_URL').and_return('https://panel.example.com/')
+      end
+
+      it 'redirects back to the panel with the new inbox id on success' do
+        allow(auth_code_object).to receive(:get_token).and_return(access_token)
+
+        get :show, params: valid_params
+
+        expect(response).to redirect_to(
+          "https://panel.example.com/integraciones/instagram/retorno?#{{ inbox_id: Inbox.last.id, ok: 1 }.to_query}"
+        )
+      end
+
+      it 'redirects back to the panel with the error when the user denies access' do
+        get :show, params: error_params
+
+        expect(response).to redirect_to(
+          "https://panel.example.com/integraciones/instagram/retorno?#{{ error: 'User denied access' }.to_query}"
+        )
+      end
+
+      it 'keeps the default Chatwoot redirect when PANEL_URL is not configured' do
+        allow(ENV).to receive(:[]).with('PANEL_URL').and_return(nil)
+
+        get :show, params: error_params
+
+        expect(response).to redirect_to(
+          app_new_instagram_inbox_url(account_id: account.id, error_type: 'access_denied', code: 400, error_message: 'User denied access')
+        )
+      end
+    end
+
     context 'when user denies authorization' do
       it 'redirects to error page with authorization error details' do
         get :show, params: error_params
