@@ -10,8 +10,12 @@ No tocar `enterprise/` (licencia propietaria; el build CE la borra). No borrar `
 - `app/views/mailers/administrator_notifications/**`: 3 plantillas de borrado de cuenta.
 - `app/javascript/dashboard/i18n/locale/{es,en}/`: login, resetPassword, settings, generalSettings, onboarding, conversation, inboxMgmt, integrations, signup.
 
+## Logos e íconos
+- `public/brand-assets/logo.svg` (claro, sin eslogan), `logo_dark.svg` (neón sobre transparente), `logo_thumbnail.svg` (cabeza del mono): son PNG embebidos en SVG (no vectores), máx. 640 px de ancho; mismos nombres que upstream.
+- `public/{favicon,favicon-badge,android-icon,apple-icon,apple-touch-icon,ms-icon}*.png`: cabeza del mono, mismos tamaños que upstream.
+- `public/manifest.json` y meta de `layouts/vueapp.html.erb`: colores `#2781F6` -> `#000000`.
+
 ## Pendiente
-- Logos e íconos en `public/` (mismos nombres de archivo): brand-assets/logo*.svg, favicon-*, android-icon-*, apple-icon-*, ms-icon-*.
 - Archivos i18n poco visibles sin tocar: mfa, labelsMgmt, auditLogs, yearInReview, helpCenter, generalSettings (resto).
 
 ## Revisar tras cada merge de upstream
