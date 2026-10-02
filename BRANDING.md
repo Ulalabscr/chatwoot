@@ -15,6 +15,10 @@ No tocar `enterprise/` (licencia propietaria; el build CE la borra). No borrar `
 - `public/{favicon,favicon-badge,android-icon,apple-icon,apple-touch-icon,ms-icon}*.png`: cabeza del mono, mismos tamaños que upstream.
 - `public/manifest.json` y meta de `layouts/vueapp.html.erb`: colores `#2781F6` -> `#000000`.
 
+## Rendimiento (ula.4)
+- `app/javascript/dashboard/i18n/index.js`: solo se empaquetan `en`, `es`, `pt`, `pt_BR` (upstream importa 57 idiomas = 31 MB de JSON; el chunk compartido pasaba de 14,8 MB / 4,1 MB gzip). `fallbackLocale: 'en'` en `entrypoints/dashboard.js` y `v3app.js`. Tras un merge de upstream, este archivo puede dar conflicto: conservar la lista corta.
+- Logos SVG reducidos (420 px / 128 px, PNG cuantizado) y PNG de íconos cuantizados; los `<link>` de íconos en `vueapp.html.erb` llevan `?v=ula4` (subir el valor al cambiar íconos).
+
 ## Pendiente
 - Archivos i18n poco visibles sin tocar: mfa, labelsMgmt, auditLogs, yearInReview, helpCenter, generalSettings (resto).
 
