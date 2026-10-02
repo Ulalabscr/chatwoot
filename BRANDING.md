@@ -19,6 +19,12 @@ No tocar `enterprise/` (licencia propietaria; el build CE la borra). No borrar `
 - `app/javascript/dashboard/i18n/index.js`: solo se empaquetan `en`, `es`, `pt`, `pt_BR` (upstream importa 57 idiomas = 31 MB de JSON; el chunk compartido pasaba de 14,8 MB / 4,1 MB gzip). `fallbackLocale: 'en'` en `entrypoints/dashboard.js` y `v3app.js`. Tras un merge de upstream, este archivo puede dar conflicto: conservar la lista corta.
 - Logos SVG reducidos (420 px / 128 px, PNG cuantizado) y PNG de íconos cuantizados; los `<link>` de íconos en `vueapp.html.erb` llevan `?v=ula4` (subir el valor al cambiar íconos).
 
+## Embed en el panel + push con texto (ula.5)
+- `app/controllers/dashboard_controller.rb`: `after_action :allow_panel_embedding` quita `X-Frame-Options` y pone `Content-Security-Policy: frame-ancestors 'self' https://panel.ulalabscr.com` (configurable con `PANEL_FRAME_ANCESTOR`). Solo `/app/*` (dashboard y login); el resto de controladores no cambia.
+- `app/services/notification/push_notification_service.rb`: `push_message` agrega `body: notification.push_message_body` al payload del push de navegador.
+- El redirect tras SSO ya existe en upstream (`sso_account_id` / `sso_conversation_id` en `/app/login`), no se parchea.
+- Upstream puede chocar en estos dos archivos al hacer merge: reaplicar a mano.
+
 ## Pendiente
 - Archivos i18n poco visibles sin tocar: mfa, labelsMgmt, auditLogs, yearInReview, helpCenter, generalSettings (resto).
 

@@ -36,11 +36,18 @@ class DashboardController < ActionController::Base
   before_action :ensure_installation_onboarding, only: [:index]
   before_action :render_hc_if_custom_domain, only: [:index]
   before_action :ensure_html_format
+  after_action :allow_panel_embedding
   layout 'vueapp'
 
   def index; end
 
   private
+
+  # Ulá Labs: solo el panel de clientes puede embeber el dashboard en un iframe
+  def allow_panel_embedding
+    response.headers.delete('X-Frame-Options')
+    response.headers['Content-Security-Policy'] = "frame-ancestors 'self' #{ENV.fetch('PANEL_FRAME_ANCESTOR', 'https://panel.ulalabscr.com')}"
+  end
 
   def ensure_html_format
     render json: { error: 'Please use API routes instead of dashboard routes for JSON requests' }, status: :not_acceptable if request.format.json?
